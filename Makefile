@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: docker-fluidsynth help install lint fmt typecheck test test-integration check licenses hooks
+.PHONY: e2e-sibei docker-fluidsynth help install lint fmt typecheck test test-integration check licenses hooks
 
 help:  ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-18s %s\n", $$1, $$2}'
@@ -34,3 +34,6 @@ hooks:  ## Install the pre-push hook
 
 docker-fluidsynth:  ## Build the fluidsynth image used when no local fluidsynth is installed
 	docker build -t mat-fluidsynth docker/fluidsynth
+
+e2e-sibei:  ## Audio to PDF through a local sibei-score (needs SIBEI_SCORE_DIR)
+	scripts/e2e-sibei.sh

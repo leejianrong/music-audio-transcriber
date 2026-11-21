@@ -4,7 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import os
+import signal
+import socket
 import sys
+import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -67,6 +73,55 @@ def cmd_eval(a: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_ingest(a: argparse.Namespace) -> int:
+    from mat.worker.ingest import IngestError, ingest
+
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    try:
+        res = ingest(Path(a.file), out, a.max_duration, a.max_mb * 1024 * 1024)
+    except IngestError as e:
+        _emit(
+            {"error": {"code": e.kind, "message": e.message}},
+            a.json,
+            f"error: {e.kind}: {e.message}",
+        )
+        return 1
+    summary = {"path": str(res.path), "duration_s": res.duration_s, "format": res.source_format}
+    _emit(summary, a.json, f"{res.path} ({res.duration_s:.1f} s, from {res.source_format})")
+    return 0
+
+
+def cmd_worker(a: argparse.Namespace) -> int:
+    from mat.worker.client import WorkerClient
+    from mat.worker.protocol import ApiError
+    from mat.worker.runner import WorkerConfig, run
+
+    token = os.environ.get("MAT_WORKER_TOKEN", "")
+    if not token:
+        print(
+            "error: set MAT_WORKER_TOKEN (the sbsw_ credential); it is never taken from argv",
+            file=sys.stderr,
+        )
+        return 2
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    worker_id = a.worker_id or f"{socket.gethostname()}-{os.getpid()}"
+    client = WorkerClient(a.api_url, token, worker_id)
+    cfg = WorkerConfig(
+        max_duration_s=a.max_duration, max_bytes=a.max_mb * 1024 * 1024, wait_seconds=a.wait
+    )
+    stop = threading.Event()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, lambda *_: stop.set())
+    try:
+        handled = run(client, cfg, stop, once=a.once)
+    except ApiError as e:
+        print(f"error: the API refused the worker credential ({e.kind})", file=sys.stderr)
+        return 1
+    print(f"handled {handled} job(s)")
+    return 0
+
+
 def cmd_schema(_: argparse.Namespace) -> int:
     sys.stdout.write(schema_text())
     return 0
@@ -112,6 +167,27 @@ def build_parser() -> argparse.ArgumentParser:
     e.add_argument("--real-dir")
     e.add_argument("--json", action="store_true")
     e.set_defaults(fn=cmd_eval)
+
+    ig = sub.add_parser("ingest", help="validate and decode an upload to mono 44.1 kHz wav")
+    ig.add_argument("file")
+    ig.add_argument("-o", "--out", default=tempfile.gettempdir())
+    ig.add_argument("--max-duration", type=float, default=600.0)
+    ig.add_argument("--max-mb", type=int, default=200)
+    ig.add_argument("--json", action="store_true")
+    ig.set_defaults(fn=cmd_ingest)
+
+    w = sub.add_parser("worker", help="pull audio jobs from sibei-score and transcribe them")
+    w.add_argument(
+        "--api-url",
+        default=os.environ.get("MAT_API_URL"),
+        required=not os.environ.get("MAT_API_URL"),
+    )
+    w.add_argument("--worker-id")
+    w.add_argument("--once", action="store_true", help="process at most one job, then exit")
+    w.add_argument("--wait", type=int, default=20, help="long-poll seconds per claim (0-30)")
+    w.add_argument("--max-duration", type=float, default=600.0)
+    w.add_argument("--max-mb", type=int, default=200)
+    w.set_defaults(fn=cmd_worker)
 
     sc = sub.add_parser("schema", help="print the NoteEvents v1 JSON Schema")
     sc.set_defaults(fn=cmd_schema)

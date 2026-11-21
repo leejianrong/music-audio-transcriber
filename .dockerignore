@@ -1,0 +1,9 @@
+.git
+.venv
+out
+data
+tests
+docs
+*.wav
+__pycache__
+.github
