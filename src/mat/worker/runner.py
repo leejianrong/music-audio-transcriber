@@ -33,6 +33,10 @@ class WorkerConfig:
     max_bytes: int = 200 * 1024 * 1024
     supported_instruments: tuple[str, ...] = ("voice", "bass")
     wait_seconds: int = 20
+    auth_backoff_s: float = (
+        15.0  # base delay after a rejected credential (sibei-score throttles it)
+    )
+    auth_backoff_cap_s: float = 300.0
 
 
 class Heartbeater:
@@ -62,7 +66,7 @@ class Heartbeater:
         except (ApiError, OSError) as e:
             log.warning("heartbeat failed for %s: %s", self._job.id, type(e).__name__)
             return
-        if res.cancelled:
+        if res.cancelled:  # job deleted, or the lease is gone: the server answers both this way
             self.cancelled = True
 
     def _run(self) -> None:
@@ -157,29 +161,45 @@ def process_job(
 
 
 def run(client: WorkerClient, cfg: WorkerConfig, stop: threading.Event, once: bool = False) -> int:
-    """Claim and process jobs until `stop` is set (or one job with `once`). Returns jobs handled."""
+    """Claim and process jobs until `stop` is set (or one job with `once`). Returns jobs handled.
+
+    One claim loop per worker: sibei-score allows a credential at most 4 concurrent long-polls.
+    A rejected credential is retried slowly rather than in a tight loop (failed auth is rate
+    limited per IP, and an operator can add the credential and restart the server).
+    """
     handled = 0
-    idle = 0
+    net_failures = 0
+    auth_failures = 0
+    api_failures = 0
     while not stop.is_set():
         try:
             job = client.claim(cfg.wait_seconds)
         except ApiError as e:
-            log.error("claim refused: %s", e.kind)
             if e.status in (401, 403):
-                raise  # a bad credential will not fix itself
-            stop.wait(5)
+                if once:
+                    raise
+                auth_failures += 1
+                delay = min(
+                    cfg.auth_backoff_cap_s, cfg.auth_backoff_s * 2 ** min(auth_failures - 1, 6)
+                )
+                log.error("worker credential rejected (%s); retrying in %.0f s", e.kind, delay)
+            else:
+                api_failures += 1
+                delay = min(60.0, 5.0 * 2 ** min(api_failures - 1, 4))
+                log.error("claim refused (%s); retrying in %.0f s", e.kind, delay)
+            stop.wait(delay)
             continue
         except OSError as e:
-            log.warning("claim failed (%s); backing off", type(e).__name__)
-            stop.wait(min(30, 2 ** min(idle, 5)))
-            idle += 1
+            net_failures += 1
+            delay = float(min(30, 2 ** min(net_failures, 5)))
+            log.warning("claim failed (%s); backing off %.0f s", type(e).__name__, delay)
+            stop.wait(delay)
             continue
+        net_failures = auth_failures = api_failures = 0
         if job is None:
-            idle = 0
             if once:
                 return handled
             continue
-        idle = 0
         log.info("claimed %s (attempt %d)", job.id, job.attempt)
         outcome = process_job(client, job, cfg)
         log.info("job %s: %s", job.id, outcome)

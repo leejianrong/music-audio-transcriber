@@ -216,10 +216,48 @@ def test_run_once_processes_one_job_and_returns() -> None:
     assert handled == 1
 
 
-def test_a_rejected_worker_credential_stops_the_loop() -> None:
+def test_a_rejected_credential_fails_fast_in_once_mode() -> None:
     api = FakeApi()
     api.claims.append(
         httpx.Response(401, json={"error": {"kind": "unauthenticated", "message": "x"}})
     )
     with pytest.raises(ApiError):
         runner.run(api.client(), CFG, threading.Event(), once=True)
+
+
+def test_a_rejected_credential_is_retried_slowly_not_in_a_tight_loop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    api = FakeApi()
+    for _ in range(2):
+        api.claims.append(
+            httpx.Response(401, json={"error": {"kind": "unauthenticated", "message": "x"}})
+        )
+    api.claims.append(httpx.Response(200, json=job_json()))
+    waits: list[float] = []
+    stop = threading.Event()
+    real_wait = stop.wait
+
+    def record_wait(timeout: float | None = None) -> bool:
+        waits.append(float(timeout or 0))
+        return real_wait(0)
+
+    stop.wait = record_wait  # type: ignore[method-assign]
+
+    def finish(*_a: Any, **_k: Any) -> str:
+        stop.set()  # the credential worked and a job arrived: end the test's loop
+        return "completed"
+
+    monkeypatch.setattr(runner, "process_job", finish)
+    cfg = WorkerConfig(auth_backoff_s=10.0)
+    assert runner.run(api.client(), cfg, stop) == 1
+    assert waits == [10.0, 20.0]  # doubling, and the loop kept going until the credential worked
+
+
+def test_a_lost_lease_that_the_server_reports_as_cancelled_is_abandoned() -> None:
+    api = FakeApi()
+    api.heartbeat_response = httpx.Response(
+        200, json={"leaseExpiresAt": None, "cancelled": True, "audio": None}
+    )
+    out = process_job(api.client(), parse_job(interval=1), CFG, _wait_for_heartbeat(api))
+    assert out == "cancelled" and not api.calls("/complete")
