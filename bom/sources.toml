@@ -1,0 +1,39 @@
+# Bill of materials: every dataset, sound source, impulse response and model that touches training,
+# evaluation or the serving path (ADR-0001, ADR-0004). `reviewed = true` means a person has read the
+# licence text itself. `paid_path = true` means it may reach paying users.
+
+[[source]]
+id = "musescore-general-sf3"
+kind = "soundfont"
+licence = "MIT (per MuseScore_General_License.md; attribution notices must be kept in derivative works)"
+source_url = "https://ftp.osuosl.org/pub/musescore/soundfont/MuseScore_General/MuseScore_General_License.md"
+reviewed = false
+paid_path = false
+notes = "Licence file read on 2026-11-22. Samples not attributed there come from FluidR3Mono; the per-instrument sample-sources CSV has not been reviewed, and render-to-train terms are not addressed in the file."
+
+[[source]]
+id = "tone-renderer"
+kind = "synthesis-code"
+licence = "Apache-2.0 (this repository)"
+source_url = "https://github.com/leejianrong/music-audio-transcriber"
+reviewed = true
+paid_path = true
+notes = "numpy additive synthesis written for this project; no third-party samples."
+
+[[source]]
+id = "synthetic-reverb-ir"
+kind = "impulse-response"
+licence = "Apache-2.0 (this repository)"
+source_url = "https://github.com/leejianrong/music-audio-transcriber"
+reviewed = true
+paid_path = true
+notes = "Exponentially decaying seeded noise; no third-party impulse responses."
+
+[[source]]
+id = "librosa-pyin"
+kind = "algorithm"
+licence = "ISC (librosa); pYIN is a published algorithm with no learned weights"
+source_url = "https://github.com/librosa/librosa"
+reviewed = false
+paid_path = true
+notes = "Licence reported by a research pass on 2026-11-22; re-read the LICENSE file before launch."

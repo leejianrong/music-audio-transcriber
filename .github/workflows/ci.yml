@@ -52,7 +52,12 @@ jobs:
         with:
           enable-cache: true
       - run: sudo apt-get update && sudo apt-get install -y fluidsynth ffmpeg
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/mat/soundfonts
+          key: soundfont-musescore-general-0.2
       - run: uv sync --frozen
+      - run: uv run mat synth fetch-soundfont
       - run: uv run pytest tests/integration -q
 
   licenses:
