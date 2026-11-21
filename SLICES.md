@@ -14,7 +14,7 @@ synthetic-data eval loop predicts anything about real recordings.
 | V6 | Guitar notation (tab later) |
 | V8 | Multi-staff score from several NoteEvents |
 
-**Timing constraints from sibei-score (2026-11-22):** its hosted launch is targeted for end of 2026 *without* audio, billing or photo import. Audio jobs and billing come after that, so V3 and V10 cannot go live earlier; until then V3 runs against a local harness. V4 to V6 and V8 also depend on its multi-staff model (its own ADR, planned early 2027), not only on its importer. Its epics: SIB2-E9 (NoteEvents import), SIB2-E10 (hosted audio jobs, metering, billing), SIB2-E11 (multi-staff for audio).
+**Timing from sibei-score (its ADR-0039, 2026-11-22):** the hosted service launches by **2026-12-31 with audio in it** (presigned upload, an audio job, NoteEvents import as a draft, audio-second metering and a free-tier cap); subscriptions and billing are not in that launch. The worker **pulls** jobs. Piano, drums and multi-staff need its parts x staves x voices model (its ADR-0040, implementation after the launch, general arrangers by 2027-04), so V4 to V6 and V8 wait on it. Its epics: SIB2-E9 (NoteEvents import), SIB2-E10 (hosted audio jobs), SIB2-E11 (multi-staff for audio). **This makes V3 urgent:** the audio worker must exist before the end of 2026.
 
 ## V1: Mono eval loop, hum to MIDI
 
@@ -65,7 +65,11 @@ synthetic-data eval loop predicts anything about real recordings.
 3. Integration harness: run `mat transcribe`, then sibei-score's import op, then PDF export.
 4. Score-level metric against the ground-truth score for synthetic clips (note-by-bar-and-beat agreement).
 
+**Status (2026-11-22):** beats attached, fixtures frozen in `tests/fixtures/note_events`, score-level metric built. The audio-to-PDF run waits on sibei-score SIB2-131 to SIB2-133 (quantizer, draft mapping, import surfaces).
+
 **Demo:** `mat transcribe melody.wav --instrument voice | sbscore import-notes -` produces a PDF lead sheet you can open and edit in the browser.
+
+**Result so far:** score-level agreement (reference quantizer, scoring only) is 0.915 on the tone suite and 0.906 on the FluidSynth suite. Synthetic clips keep a constant tempo with notes on half-beat positions, so this is optimistic; rubato in real performances will be harder.
 
 **Rests on assumptions:** A18. Depends on sibei-score's import op (cross-repo table).
 

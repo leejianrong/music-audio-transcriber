@@ -12,7 +12,7 @@ Decisions: `docs/adr/`. Decision register and licence research: `QUESTIONS.md`. 
 |---|---|
 | Scaffold, CI, hooks | built |
 | V1 mono eval loop | built on branch `v1-mono-eval-loop`; real-clip eval waits on recorded clips |
-| V2 voice/bass to sheet | blocked on sibei-score SIB2-E9 for the real importer |
+| V2 voice/bass to sheet | beats, fixtures, score-level metric built (branch `v2-sheet-music-contract`); the PDF run waits on sibei-score SIB2-131..133 |
 | V3 and later | not started |
 
 ## Commands

@@ -19,6 +19,7 @@ from mat.core.note_events import (
     sha256_file,
 )
 from mat.transcribe.audio_io import load_audio
+from mat.transcribe.beats import LibrosaBeatTracker, refine_with_onsets
 
 SR = 22050
 HOP = 256
@@ -157,16 +158,23 @@ def transcribe_audio(
     return notes, warnings
 
 
-def transcribe_file(path: Path, instrument: Mono, params: PyinParams | None = None) -> NoteEvents:
-    y = load_audio(path, SR)
-    notes, warnings = transcribe_audio(y, instrument, params)
+def _events(y: npt.NDArray[np.float32], instrument: Mono, sha256: str) -> NoteEvents:
+    """Notes plus a beat grid for a clip already resampled to SR."""
+    notes, warnings = transcribe_audio(y, instrument)
+    beats, beat_warnings = LibrosaBeatTracker().track(y, SR)
+    beats = refine_with_onsets(beats, [n.onset_s for n in notes], float(len(y) / SR))
     return NoteEvents(
-        source=Source(sha256=sha256_file(path), duration_s=float(len(y) / SR)),
+        source=Source(sha256=sha256, duration_s=float(len(y) / SR)),
         instrument=instrument,
         producer=Producer(model_id=MODEL_ID, model_version=MODEL_VERSION),
+        beats=beats,
         notes=notes,
-        warnings=warnings,
+        warnings=[*warnings, *beat_warnings],
     )
+
+
+def transcribe_file(path: Path, instrument: Mono) -> NoteEvents:
+    return _events(load_audio(path, SR), instrument, sha256_file(path))
 
 
 def transcribe_array(
@@ -174,11 +182,4 @@ def transcribe_array(
 ) -> NoteEvents:
     """Transcribe an in-memory clip (used by the eval suite)."""
     yy = librosa.resample(y, orig_sr=sr, target_sr=SR) if sr != SR else y
-    notes, warnings = transcribe_audio(yy, instrument)
-    return NoteEvents(
-        source=Source(sha256=sha256, duration_s=float(len(yy) / SR)),
-        instrument=instrument,
-        producer=Producer(model_id=MODEL_ID, model_version=MODEL_VERSION),
-        notes=notes,
-        warnings=warnings,
-    )
+    return _events(yy, instrument, sha256)

@@ -35,7 +35,7 @@ NoteEvents {
   source: { sha256, duration_s },
   instrument: "voice" | "bass" | "piano" | "drums" | "guitar" | "other",
   producer: { model_id, model_version, stage: "transcribe" },
-  beats: [ { t_s, is_downbeat } ],            // from beat tracking; may be empty with a warning
+  beats: [ { t_s, is_downbeat: bool | null } ],  // null = unknown; empty with a warning if no steady beat
   notes: [ { id, onset_s, offset_s, pitch: <MIDI int>, cents?: <int>,
              velocity?: 0-127, confidence: 0-1, drum_class?: string } ],
   warnings: [ { code, message, t_s? } ]
@@ -46,9 +46,13 @@ Times are seconds, never beats. Percussion uses General MIDI pitch numbers plus 
 multi-instrument job produces one NoteEvents per stem. Contract changes bump `schema_version`; sibei-score reads
 forward-compatibly and rejects unknown majors.
 
-**Transport is not decided.** sibei-score's current ADR-0005 has the API push to its worker over HTTP, while this
-plan assumed workers pull from a queue. Its SIB2-135 decides; our worker is a transport-agnostic handler until then.
-The NoteEvents contract does not depend on the answer.
+**Transport: pull** (sibei-score ADR-0039 decision 9, accepted 2026-11-22). Our GPU worker claims jobs from
+sibei-score's durable job table over authenticated HTTPS with a lease and heartbeat, and returns NoteEvents;
+bytes move by presigned URL. It reverses if we later target a serverless GPU endpoint. The NoteEvents contract does
+not depend on the transport.
+
+**Downbeats are unknown today.** The beat tracker finds beats but not bar lines, so real output carries
+`is_downbeat: null` and a `downbeats_unknown` warning. sibei-score must not assume where bars start.
 
 **Notation scope in sibei-score grows by its own ADRs** (grand staff, percussion staff, tab). Those are its
 decisions, tracked on its board, and sequenced against our slices (see SLICES.md "Cross-repo dependencies").
