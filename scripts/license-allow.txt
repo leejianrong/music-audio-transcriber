@@ -1,0 +1,1 @@
+# Reviewed copyleft exceptions: one distribution name per line, with a reason after "#".

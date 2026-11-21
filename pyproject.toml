@@ -1,0 +1,54 @@
+[project]
+name = "mat"
+version = "0.1.0"
+description = "Music audio transcriber: audio to NoteEvents, MIDI and (via sibei-score) sheet music"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.13",
+    "librosa>=0.11",
+    "soundfile>=0.12",
+    "pretty_midi>=0.2.10",
+    "mir_eval>=0.8",
+    "pydantic>=2.7",
+    "setuptools<81",  # pretty_midi imports pkg_resources
+]
+
+[project.scripts]
+mat = "mat.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.8", "mypy>=1.13"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mat"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = ["integration: needs fluidsynth and a soundfont (CI integration job)"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["librosa.*", "pretty_midi.*", "mir_eval.*", "scipy.*", "soundfile.*"]
+ignore_missing_imports = true

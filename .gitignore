@@ -1,0 +1,28 @@
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+
+# Secrets and local config
+.env
+.env.*
+.mcp.json
+.claude/settings.local.json
+
+# Generated data, caches and model artifacts are never committed (ADR-0004, ADR-0006)
+/data/
+/out/
+*.wav
+*.mp3
+*.flac
+*.sf2
+*.sf3
+*.pt
+*.ckpt
+*.onnx
+*.safetensors
+!tests/fixtures/**/*.wav
