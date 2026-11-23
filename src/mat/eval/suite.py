@@ -15,6 +15,7 @@ import numpy as np
 
 from mat.core.midi import from_midi
 from mat.eval.notes import best_offset_scores, note_scores
+from mat.eval.score_level import score_agreement
 from mat.synth.generate import build_clip
 from mat.synth.suites import mono_recipes
 from mat.transcribe.audio_io import load_audio
@@ -28,6 +29,7 @@ class ClipResult:
     f1: float
     f1_with_offset: float
     shift_s: float = 0.0
+    score_agreement: float | None = None
 
 
 @dataclass
@@ -46,8 +48,10 @@ class MonoReport:
             i: float(np.mean([r.f1 for r in self.synthetic if r.instrument == i]))
             for i in sorted({r.instrument for r in self.synthetic})
         }
+        agree = [r.score_agreement for r in self.synthetic if r.score_agreement is not None]
         return {
             "renderer": self.renderer,
+            "synthetic_score_agreement": float(np.mean(agree)) if agree else None,
             "synthetic_clips": len(self.synthetic),
             "synthetic_f1": syn,
             "synthetic_f1_by_instrument": by_inst,
@@ -75,8 +79,9 @@ def run_mono(
         clip = build_clip(recipe)
         est = transcribe_array(clip.audio, recipe.sample_rate, recipe.instrument, "0" * 64)
         s = note_scores(clip.truth, est)
+        agreement = score_agreement(clip.symbolic, est.notes, est.beats)
         report.synthetic.append(
-            ClipResult(f"synth-{i:03d}", recipe.instrument, s.f1, s.f1_with_offset)
+            ClipResult(f"synth-{i:03d}", recipe.instrument, s.f1, s.f1_with_offset, 0.0, agreement)
         )
     if real_dir is not None:
         for wav in sorted(real_dir.glob("*.wav")):
@@ -106,6 +111,9 @@ def format_report(report: MonoReport) -> str:
     assert isinstance(by, dict)
     for inst, v in by.items():
         lines.append(f"    {inst}: {v:.3f}")
+    lines.append(
+        f"    score-level agreement (reference quantizer): {fmt(s['synthetic_score_agreement'])}"
+    )
     lines.append(f"  real:      {s['real_clips']} clips, note F1 {fmt(s['real_f1'])}")
     lines.append(f"  sim-to-real gap: {fmt(s['sim_to_real_gap'])}")
     if not report.real:

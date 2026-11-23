@@ -29,5 +29,7 @@ def test_mono_suite_on_soundfont_audio_meets_the_provisional_bars() -> None:
     # V1 records the number (about 0.80) rather than hiding it; see SLICES.md V1.
     assert by["bass"] >= 0.95
     assert by["voice"] >= 0.70
+    agreement = s["synthetic_score_agreement"]
+    assert isinstance(agreement, float) and agreement >= 0.80
     synthetic = s["synthetic_f1"]
     assert isinstance(synthetic, float) and synthetic >= 0.85
