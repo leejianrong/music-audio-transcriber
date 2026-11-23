@@ -73,6 +73,12 @@ def cmd_eval(a: argparse.Namespace) -> int:
     return 0
 
 
+def ops_default_liveness() -> Path:
+    from mat.worker.ops import DEFAULT_LIVENESS
+
+    return DEFAULT_LIVENESS
+
+
 def cmd_ingest(a: argparse.Namespace) -> int:
     from mat.worker.ingest import IngestError, ingest
 
@@ -93,26 +99,57 @@ def cmd_ingest(a: argparse.Namespace) -> int:
 
 
 def cmd_worker(a: argparse.Namespace) -> int:
+    import httpx
+
+    from mat.worker import ops
     from mat.worker.client import WorkerClient
     from mat.worker.protocol import ApiError
     from mat.worker.runner import WorkerConfig, run
 
+    liveness = Path(a.liveness_file)
+    if a.healthcheck:
+        ok, reason = ops.check_health(liveness, a.max_age)
+        print(reason)
+        return 0 if ok else 1
+
     token = os.environ.get("MAT_WORKER_TOKEN", "")
-    if not token:
+    if not token or not a.api_url:
         print(
-            "error: set MAT_WORKER_TOKEN (the sbsw_ credential); it is never taken from argv",
+            "error: set MAT_WORKER_TOKEN (the sbsw_ credential, never taken from argv) "
+            "and --api-url or MAT_API_URL",
             file=sys.stderr,
         )
         return 2
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    ops.configure_logging(a.log_format)
     worker_id = a.worker_id or f"{socket.gethostname()}-{os.getpid()}"
-    client = WorkerClient(a.api_url, token, worker_id)
+    http = None
+    if a.audit_file:
+        http = httpx.Client(
+            timeout=httpx.Timeout(60.0, connect=10.0),
+            event_hooks={"request": [ops.audit_hook(Path(a.audit_file))]},
+        )
+    client = WorkerClient(a.api_url, token, worker_id, http=http)
     cfg = WorkerConfig(
-        max_duration_s=a.max_duration, max_bytes=a.max_mb * 1024 * 1024, wait_seconds=a.wait
+        max_duration_s=a.max_duration,
+        max_bytes=a.max_mb * 1024 * 1024,
+        wait_seconds=a.wait,
+        liveness_file=liveness,
+        max_job_s=a.max_job_seconds,
     )
     stop = threading.Event()
+
+    def on_signal(signum: int, _frame: object) -> None:
+        if stop.is_set():  # a second signal means "now": the lease will lapse and the job re-queue
+            os._exit(130)
+        logging.getLogger("mat.worker").info(
+            "signal %d: finishing the current job, then exiting",
+            signum,
+            extra={"event": "shutdown-requested"},
+        )
+        stop.set()
+
     for sig in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(sig, lambda *_: stop.set())
+        signal.signal(sig, on_signal)
     try:
         handled = run(client, cfg, stop, once=a.once)
     except ApiError as e:
@@ -177,16 +214,31 @@ def build_parser() -> argparse.ArgumentParser:
     ig.set_defaults(fn=cmd_ingest)
 
     w = sub.add_parser("worker", help="pull audio jobs from sibei-score and transcribe them")
-    w.add_argument(
-        "--api-url",
-        default=os.environ.get("MAT_API_URL"),
-        required=not os.environ.get("MAT_API_URL"),
-    )
+    w.add_argument("--api-url", default=os.environ.get("MAT_API_URL"))
     w.add_argument("--worker-id")
     w.add_argument("--once", action="store_true", help="process at most one job, then exit")
     w.add_argument("--wait", type=int, default=20, help="long-poll seconds per claim (0-30)")
     w.add_argument("--max-duration", type=float, default=600.0)
     w.add_argument("--max-mb", type=int, default=200)
+    w.add_argument(
+        "--max-job-seconds",
+        type=float,
+        default=1800.0,
+        help="stop heartbeating a job after this long",
+    )
+    w.add_argument(
+        "--log-format", choices=["text", "json"], default=os.environ.get("MAT_LOG_FORMAT", "text")
+    )
+    w.add_argument("--liveness-file", default=str(ops_default_liveness()))
+    w.add_argument(
+        "--healthcheck", action="store_true", help="exit 0 if the worker loop ticked recently"
+    )
+    w.add_argument(
+        "--max-age", type=float, default=90.0, help="health check: seconds since the last tick"
+    )
+    w.add_argument(
+        "--audit-file", help="append {host, authorization: bool} per outbound request (no values)"
+    )
     w.set_defaults(fn=cmd_worker)
 
     sc = sub.add_parser("schema", help="print the NoteEvents v1 JSON Schema")
