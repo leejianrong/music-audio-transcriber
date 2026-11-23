@@ -11,9 +11,9 @@ Decisions: `docs/adr/`. Decision register and licence research: `QUESTIONS.md`. 
 | Slice | State |
 |---|---|
 | Scaffold, CI, hooks | built |
-| V1 mono eval loop | built on branch `v1-mono-eval-loop`; real-clip eval waits on recorded clips |
-| V2 voice/bass to sheet | beats, fixtures, score-level metric built (branch `v2-sheet-music-contract`); the PDF run waits on sibei-score SIB2-131..133 |
-| V3 hosted worker | built on branch `v3-hosted-worker`; real run against local sibei-score works; no hosted deployment yet |
+| V1 mono eval loop | merged; real-clip eval waits on recorded clips |
+| V2 voice/bass to sheet | merged; audio to PDF works through a local sibei-score (`make e2e-sibei`) |
+| V3 hosted worker | merged; S3 presigned path verified (`make e2e-sibei-s3`); runbook in `docs/worker-runbook.md`; no hosted deployment yet |
 | V7 separation | groundwork built (mix recipes, SDR/SI-SDR, baselines; `mat eval --suite separation`); no model yet |
 | V4-V6, V8-V10 | not started |
 
@@ -26,6 +26,8 @@ make check      # pre-push gate: ruff, mypy --strict, unit tests (fast, no infra
 make test-integration   # needs fluidsynth (or `make docker-fluidsynth`) + `uv run mat synth fetch-soundfont`
 make licenses   # fail on GPL/AGPL runtime deps
 make e2e-sibei  # audio -> worker -> sibei-score draft -> PDF; needs SIBEI_SCORE_DIR (a sibei-score checkout)
+make e2e-sibei-s3  # same, with a throwaway S3 store so the worker uses presigned URLs (needs Docker)
+mat worker --healthcheck  # exit 0 if the worker loop ticked in the last 90 s
 mat worker      # pull jobs from sibei-score; env MAT_API_URL (or --api-url) and MAT_WORKER_TOKEN (never argv)
 make hooks      # install the pre-push hook
 ```

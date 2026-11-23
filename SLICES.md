@@ -105,7 +105,9 @@ synthetic-data eval loop predicts anything about real recordings.
 
 **Status (2026-11-22):** built. `mat worker` speaks the pull protocol and was run against a real local sibei-score server: claim, download, ingest, transcribe, complete, a draft in the library, 12.08 audio-seconds metered, and a PDF. `make e2e-sibei` repeats it (`SIBEI_SCORE_DIR` points at a sibei-score checkout). Not yet done: a hosted deployment (none exists), and S3 presigned transfer against a real bucket (covered here by a fake).
 
-**Cost:** about 5.3 CPU-seconds per audio-minute for voice and bass (pYIN plus beats, warm, one core).
+**Cost:** about 5.3 CPU-seconds per audio-minute for voice and bass (pYIN plus beats, warm, one core); peak memory about 2.5 GB at the 10-minute cap.
+
+**Deploy readiness (2026-11-23):** health check, graceful shutdown, JSON logs, `make e2e-sibei-s3` (presigned path, with an audit that the object store never receives the credential) and `docs/worker-runbook.md`.
 
 **Rests on assumptions:** A20 (the cap is sized after this slice's cost data).
 

@@ -10,12 +10,23 @@ services:
     environment:
       MAT_API_URL: ${MAT_API_URL:?set MAT_API_URL}
       MAT_WORKER_TOKEN: ${MAT_WORKER_TOKEN:?set MAT_WORKER_TOKEN}
+      MAT_LOG_FORMAT: json
     read_only: true
     tmpfs:
       - /tmp:size=1g,mode=1777
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
-    mem_limit: 3g
+    mem_limit: 4g  # peak is about 2.5 GB at the 10-minute cap (about 4 MB per audio-second)
     cpus: 2
     pids_limit: 256
     restart: unless-stopped
+    # SIGTERM lets the current job finish; a second signal exits at once (the lease then lapses and the
+    # server re-queues the job). Compose does not restart an unhealthy container by itself: pair this
+    # with autoheal or an orchestrator that does (see docs/worker-runbook.md).
+    stop_grace_period: 150s
+    healthcheck:
+      test: ["CMD", "mat", "worker", "--healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
