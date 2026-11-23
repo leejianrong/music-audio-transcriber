@@ -259,6 +259,11 @@ The 7 dB bar in A18 is for real music, not these mixes. These numbers only show 
 
 **Build plan:** wire ingest, separate, transcribe each stem; one NoteEvents per stem; stage caching by input hash; sibei-score builds a multi-staff score.
 
+**Wire contract (sibei-score ADR-0034 amendment, SIB2-147, merged):** `complete` takes
+`{"inline": {"stems": [NoteEvents, ...]}}`, at most 12 stems, one shared `source.sha256` and `duration_s`
+(10 ms), metered once per job. Built here: `WorkerClient.complete_stems`, which refuses a bad set before
+sending. Not built: the pipeline that produces stems, and wiring `process_job` to it (needs a separator).
+
 **Demo:** upload a synthetic band mix and receive stems plus a multi-staff PDF.
 
 ### Test plan
