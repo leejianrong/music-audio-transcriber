@@ -13,3 +13,9 @@ tracker does not find bar lines.
 `valid_piano_baseline.json` is the classical CQT baseline run on the audio of that same clip, so it has
 the errors real output will have (extra and merged notes, no velocities). Both carry the same
 `source.sha256`. Use the pair to test hand splitting against imperfect input.
+
+`valid_mix4_{vocals,drums,bass,other}.json` are ground truth for the four stems of one seeded synthetic
+mix (tone renderer, 4 bars at 100 bpm). All four share `source.sha256` (the hash of the mix, the one
+upload) and `duration_s`, as a multi-stem job's results must. `vocals` is a `voice` melody, `bass` is
+`bass`, `other` is polyphonic chords (instrument `other`), and `drums` carries GM pitches with
+`drum_class`. Each has the beat grid with every fourth beat a downbeat (real output has `null`).

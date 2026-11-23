@@ -276,7 +276,7 @@ def stem_truth(clip: MixClip, stem: str) -> NoteEvents:
     duration = len(clip.mix) / sr
     n_beats = int(np.floor(duration / b)) + 1
     return NoteEvents(
-        source=Source(sha256=sha256_bytes(clip.stems[stem].tobytes()), duration_s=duration),
+        source=Source(sha256=sha256_bytes(clip.mix.tobytes()), duration_s=duration),
         instrument=STEM_INSTRUMENT[stem],
         producer=Producer(model_id="ground-truth", model_version="mix-recipe-v1"),
         beats=[Beat(t_s=k * b, is_downbeat=(k % BEATS_PER_BAR == 0)) for k in range(n_beats)],
