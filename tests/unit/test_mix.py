@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-from mat.core.note_events import NoteEvents
+from mat.core.note_events import NoteEvents, sha256_bytes
 from mat.synth.mix import STEMS, MixRecipe, build_mix, resolve, stem_truth, write_mix
 
 
@@ -71,3 +71,11 @@ def test_written_clip_reloads_to_the_same_audio(tmp_path: Path) -> None:
     data, sr = sf.read(str(mix_path), dtype="float32")
     assert sr == 22050 and np.array_equal(data, clip.mix)
     assert all((tmp_path / "mix.stems" / f"{s}.wav").exists() for s in STEMS)
+
+
+def test_every_stem_truth_names_the_uploaded_mix_as_its_source() -> None:
+    clip = build_mix(resolve(MixRecipe(seed=2, bars=2, renderer="tone")))
+    sources = [stem_truth(clip, s).source for s in STEMS]
+    # one upload, one source: a multi-stem job shares sha256 and duration
+    assert all(src == sources[0] for src in sources)
+    assert sources[0].sha256 == sha256_bytes(clip.mix.tobytes())
