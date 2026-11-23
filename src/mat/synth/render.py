@@ -146,33 +146,47 @@ def _uid() -> str:
     return f"{os.getuid()}:{os.getgid()}"
 
 
-def render_fluidsynth(recipe: Recipe, notes: list[SymNote]) -> Audio:
-    sf = Path(recipe.soundfont) if recipe.soundfont else soundfont_path()
-    if sf is None or not sf.exists():
+def render_fluidsynth_timed(
+    timed: list[tuple[float, float, int]],
+    program: int,
+    is_drum: bool,
+    bpm: float,
+    sample_rate: int,
+    soundfont: str | None = None,
+) -> Audio:
+    """Render (onset_s, offset_s, pitch) notes with one General MIDI program, or the drum kit."""
+    sf_file = Path(soundfont) if soundfont else soundfont_path()
+    if sf_file is None or not sf_file.exists():
         raise FileNotFoundError("soundfont missing: run `mat synth fetch-soundfont`")
     if not fluidsynth_available():
         raise RuntimeError("fluidsynth not found (install it, or `make docker-fluidsynth`)")
-    program = int(recipe.patch.split(":", 1)[1]) if recipe.patch.startswith("gm:") else 0
-    pm = pretty_midi.PrettyMIDI(initial_tempo=recipe.bpm)
-    inst = pretty_midi.Instrument(program=program)
-    for onset, offset, pitch in note_times(recipe, notes):
+    pm = pretty_midi.PrettyMIDI(initial_tempo=bpm)
+    inst = pretty_midi.Instrument(program=program, is_drum=is_drum)
+    for onset, offset, pitch in timed:
         inst.notes.append(pretty_midi.Note(velocity=90, pitch=pitch, start=onset, end=offset))
     pm.instruments.append(inst)
     with tempfile.TemporaryDirectory(prefix="mat-fs-") as tmp:
         mid, wav = Path(tmp) / "in.mid", Path(tmp) / "out.wav"
         pm.write(str(mid))
         subprocess.run(
-            _fluidsynth_cmd(sf, mid, wav, recipe.sample_rate),
+            _fluidsynth_cmd(sf_file, mid, wav, sample_rate),
             check=True,
             capture_output=True,
             timeout=120,
         )
         data, sr = sf_read(wav)
-    if sr != recipe.sample_rate:
+    if sr != sample_rate:
         raise RuntimeError("unexpected sample rate from fluidsynth")
     tail = np.zeros(int(TAIL_S * sr), dtype=np.float32)
     peak = float(np.max(np.abs(data))) or 1.0
     return np.concatenate([data / peak * 0.5, tail]).astype(np.float32)
+
+
+def render_fluidsynth(recipe: Recipe, notes: list[SymNote]) -> Audio:
+    program = int(recipe.patch.split(":", 1)[1]) if recipe.patch.startswith("gm:") else 0
+    return render_fluidsynth_timed(
+        note_times(recipe, notes), program, False, recipe.bpm, recipe.sample_rate, recipe.soundfont
+    )
 
 
 def sf_read(path: Path) -> tuple[Audio, int]:

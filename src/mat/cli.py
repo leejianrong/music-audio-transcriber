@@ -67,6 +67,16 @@ def cmd_fetch_soundfont(a: argparse.Namespace) -> int:
 
 
 def cmd_eval(a: argparse.Namespace) -> int:
+    if a.suite == "separation":
+        from mat.eval.separation import format_separation, run_separation
+
+        sep_report = run_separation(a.renderer, min(a.n, 12) if a.n == 24 else a.n, a.seed)
+        _emit(
+            {"summary": sep_report.summary(), "sdr": sep_report.sdr, "si_sdr": sep_report.si_sdr},
+            a.json,
+            format_separation(sep_report),
+        )
+        return 0
     real = Path(a.real_dir) if a.real_dir else None
     report = run_mono(a.renderer, a.n, a.seed, real)
     _emit(report.to_dict(), a.json, format_report(report))
@@ -197,7 +207,7 @@ def build_parser() -> argparse.ArgumentParser:
     f.set_defaults(fn=cmd_fetch_soundfont)
 
     e = sub.add_parser("eval", help="score transcribers on synthetic and real clips")
-    e.add_argument("--suite", default="mono", choices=["mono"])
+    e.add_argument("--suite", default="mono", choices=["mono", "separation"])
     e.add_argument("--renderer", default="tone", choices=["tone", "fluidsynth"])
     e.add_argument("--n", type=int, default=24)
     e.add_argument("--seed", type=int, default=0)
