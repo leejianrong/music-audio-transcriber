@@ -32,7 +32,12 @@ def _emit(obj: Any, as_json: bool, text: str) -> None:
 def cmd_transcribe(a: argparse.Namespace) -> int:
     src = Path(a.file)
     try:
-        events = transcribe_file(src, a.instrument)
+        if a.instrument == "piano":
+            from mat.transcribe import poly
+
+            events = poly.transcribe_file(src)  # classical baseline, not the product model
+        else:
+            events = transcribe_file(src, a.instrument)
     except AudioDecodeError as e:
         _emit({"error": {"code": "decode_failed", "message": str(e)}}, a.json, f"error: {e}")
         return 1
@@ -76,6 +81,12 @@ def cmd_eval(a: argparse.Namespace) -> int:
             a.json,
             format_separation(sep_report),
         )
+        return 0
+    if a.suite == "piano":
+        from mat.eval.piano import format_piano, run_piano
+
+        piano_report = run_piano(a.renderer, a.n, a.seed)
+        _emit(piano_report.summary(), a.json, format_piano(piano_report))
         return 0
     real = Path(a.real_dir) if a.real_dir else None
     report = run_mono(a.renderer, a.n, a.seed, real)
@@ -189,7 +200,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     t = sub.add_parser("transcribe", help="audio -> NoteEvents JSON and MIDI")
     t.add_argument("file")
-    t.add_argument("--instrument", required=True, choices=["voice", "bass"])
+    t.add_argument(
+        "--instrument",
+        required=True,
+        choices=["voice", "bass", "piano"],
+        help="piano uses the classical baseline until our own model exists",
+    )
     t.add_argument("-o", "--out", help="output directory (default: next to the input)")
     t.add_argument("--json", action="store_true")
     t.set_defaults(fn=cmd_transcribe)
@@ -207,7 +223,7 @@ def build_parser() -> argparse.ArgumentParser:
     f.set_defaults(fn=cmd_fetch_soundfont)
 
     e = sub.add_parser("eval", help="score transcribers on synthetic and real clips")
-    e.add_argument("--suite", default="mono", choices=["mono", "separation"])
+    e.add_argument("--suite", default="mono", choices=["mono", "separation", "piano"])
     e.add_argument("--renderer", default="tone", choices=["tone", "fluidsynth"])
     e.add_argument("--n", type=int, default=24)
     e.add_argument("--seed", type=int, default=0)

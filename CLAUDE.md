@@ -15,7 +15,8 @@ Decisions: `docs/adr/`. Decision register and licence research: `QUESTIONS.md`. 
 | V2 voice/bass to sheet | merged; audio to PDF works through a local sibei-score (`make e2e-sibei`) |
 | V3 hosted worker | merged; S3 presigned path verified (`make e2e-sibei-s3`); runbook in `docs/worker-runbook.md`; no hosted deployment yet |
 | V7 separation | groundwork built (mix recipes, SDR/SI-SDR, baselines; `mat eval --suite separation`); no model yet |
-| V4-V6, V8-V10 | not started |
+| V4 piano | groundwork built (recipes, `mat eval --suite piano`, classical baseline); model waits on F5 GPU budget |
+| V5-V6, V8-V10 | not started |
 
 ## Commands
 
