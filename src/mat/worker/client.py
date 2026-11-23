@@ -33,6 +33,8 @@ for _noisy in ("httpx", "httpcore"):
     logging.getLogger(_noisy).setLevel(logging.WARNING)
 
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+MAX_STEMS = 12  # sibei-score ADR-0034 amendment (SIB2-147)
+STEM_DURATION_TOL_S = 0.01  # all stems describe one upload; the server allows 10 ms
 
 
 class WorkerClient:
@@ -160,6 +162,27 @@ class WorkerClient:
         )
         out: dict[str, Any] = resp.json()
         return out
+
+    def complete_stems(
+        self, job_id: str, lease: str, duration_s: float, stems: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Complete a multi-stem job: one NoteEvents per stem, all about the same upload.
+
+        sibei-score fails the whole job (non-retryable, nothing metered) on a differing source or
+        more than 12 stems, so refuse here, before spending a request, with the stem index.
+        """
+        if not stems:
+            raise ValueError("a result needs at least one stem")
+        if len(stems) > MAX_STEMS:
+            raise ValueError(f"at most {MAX_STEMS} stems per job, got {len(stems)}")
+        first = stems[0]["source"]
+        for i, st in enumerate(stems[1:], start=1):
+            src = st["source"]
+            if src["sha256"] != first["sha256"]:
+                raise ValueError(f"stems[{i}].source.sha256 differs from stems[0]")
+            if abs(src["duration_s"] - first["duration_s"]) > STEM_DURATION_TOL_S:
+                raise ValueError(f"stems[{i}].source.duration_s differs from stems[0]")
+        return self.complete(job_id, lease, duration_s, {"stems": stems})
 
     def fail(
         self, job_id: str, lease: str, kind: str, message: str, retryable: bool
