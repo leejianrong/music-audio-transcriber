@@ -15,7 +15,10 @@ RECIPE_VERSION = 1
 RANGES: dict[str, tuple[int, int]] = {
     "bass": (28, 55),  # E1..G3
     "voice": (48, 72),  # C3..C5
+    "piano": (36, 84),  # C2..C6
 }
+# Piano: the left hand stays below this note, the right hand at or above it.
+PIANO_SPLIT = 55
 
 # Scale degrees (semitones from the tonic) used by the melody generators.
 SCALES: dict[str, tuple[int, ...]] = {
@@ -39,8 +42,9 @@ class AugmentSpec:
 @dataclass(frozen=True)
 class Recipe:
     seed: int
-    instrument: Literal["voice", "bass"]
-    kind: Literal["scale", "arpeggio", "melody"] = "melody"
+    instrument: Literal["voice", "bass", "piano"]
+    # piano: "chords" (block triads) or "broken" (arpeggiated) left hand under a right-hand melody
+    kind: Literal["scale", "arpeggio", "melody", "chords", "broken"] = "melody"
     n_notes: int = 16
     bpm: float = 100.0
     renderer: Literal["tone", "fluidsynth"] = "tone"
@@ -77,8 +81,48 @@ class SymNote:
 ARTICULATION = 0.9  # a note sounds for 90% of its written length, so repeats are separable
 
 
+def _piano(recipe: Recipe, rng: np.random.Generator) -> list[SymNote]:
+    """Right-hand melody over left-hand triads, one per 4-beat bar; `n_notes` right-hand notes."""
+    scale = SCALES[("major", "minor")[int(rng.integers(0, 2))]]
+    tonic = int(rng.integers(0, 12))
+    right = sorted(
+        p
+        for o in range(0, 120, 12)
+        for step in scale
+        if PIANO_SPLIT <= (p := tonic + o + step) <= RANGES["piano"][1]
+    )
+    idx = int(rng.integers(0, len(right) // 2))
+    melody: list[SymNote] = []
+    t = 0.0
+    for _ in range(recipe.n_notes):
+        d = float(rng.choice([0.5, 1.0, 1.0, 1.5, 2.0]))
+        melody.append(SymNote(t, d, right[idx]))
+        t += d
+        idx = int(np.clip(idx + int(rng.choice([-2, -1, 0, 1, 2])), 0, len(right) - 1))
+    bars = int(np.ceil(t / 4.0))
+    low = sorted(
+        p
+        for o in range(-12, 120, 12)
+        for step in scale
+        if RANGES["piano"][0] <= (p := tonic + o + step) < PIANO_SPLIT - 5
+    )
+    left: list[SymNote] = []
+    for bar in range(bars):
+        root = int(rng.integers(0, len(low) - 4))
+        triad = [low[root], low[root + 2], low[root + 4]]
+        if recipe.kind == "broken":
+            left += [
+                SymNote(bar * 4.0 + i * 0.5, 0.5, triad[[0, 1, 2, 1][i % 4]]) for i in range(8)
+            ]
+        else:
+            left += [SymNote(bar * 4.0, 4.0, p) for p in triad]
+    return sorted(melody + left, key=lambda n: (n.onset_beat, n.pitch))
+
+
 def generate_symbolic(recipe: Recipe) -> list[SymNote]:
     rng = np.random.default_rng(recipe.seed)
+    if recipe.instrument == "piano":
+        return _piano(recipe, rng)
     lo, hi = RANGES[recipe.instrument]
     scale_name = ("major", "minor", "pentatonic")[int(rng.integers(0, 3))]
     scale = SCALES[scale_name]

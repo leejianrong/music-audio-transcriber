@@ -140,6 +140,12 @@ synthetic-data eval loop predicts anything about real recordings.
 3. Dev baselines (Basic Pitch, ByteDance piano) on the same held-out sets for comparison only.
 4. Export ONNX and run on CPU.
 
+**Groundwork built (no spend, before the gate):** piano recipes (two-handed, polyphonic; `chords` and
+`broken` left hands), `mat eval --suite piano` taking any transcriber, and a classical CQT baseline
+(`mat transcribe --instrument piano` uses it until our model exists). Baseline note F1 on 16 clips: 0.80
+tone renderer, 0.35 soundfont renderer (precision 0.22, recall 0.86). That 0.35 is the floor our model
+must clear; the 0.85 target is on this suite. Training, dev baselines and ONNX wait for F5.
+
 **Demo:** `mat transcribe piano.wav --instrument piano` writes a two-hand MIDI, and the eval report compares ours vs the dev baselines on synthetic and real clips.
 
 **Rests on assumptions:** A18, and ADR-0004's claim that synthetic piano is a usable training base. If the gap is large, real licensed recordings are needed.

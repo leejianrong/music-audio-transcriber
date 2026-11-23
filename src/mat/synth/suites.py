@@ -54,3 +54,39 @@ def mono_recipes(
             )
         )
     return out
+
+
+PIANO_PROGRAMS = (0, 1, 2, 4)  # acoustic grand, bright acoustic, electric grand, electric piano 1
+
+
+def piano_recipes(
+    renderer: Literal["tone", "fluidsynth"], n: int, seed: int = 0, augment: bool = True
+) -> list[Recipe]:
+    rng = np.random.default_rng(seed)
+    out: list[Recipe] = []
+    for i in range(n):
+        if renderer == "tone":
+            patch = "pluck"
+        else:
+            patch = f"gm:{PIANO_PROGRAMS[int(rng.integers(0, len(PIANO_PROGRAMS)))]}"
+        aug = AugmentSpec()
+        if augment:
+            aug = AugmentSpec(
+                gain_db=float(rng.uniform(-6, 0)),
+                noise_snr_db=_pick(rng, (None, 40.0, 30.0)) if i % 2 else None,
+                reverb_rt60_s=_pick(rng, (None, 0.3, 0.6, 1.0)) if i % 4 != 3 else None,
+                reverb_wet=float(rng.uniform(0.1, 0.35)),
+            )
+        out.append(
+            Recipe(
+                seed=int(rng.integers(0, 2**31 - 1)),
+                instrument="piano",
+                kind=("chords", "broken")[i % 2],
+                n_notes=int(rng.integers(8, 15)),
+                bpm=float(rng.choice([80.0, 100.0, 120.0])),
+                renderer=renderer,
+                patch=patch,
+                augment=aug,
+            )
+        )
+    return out

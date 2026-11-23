@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 import numpy as np
 
@@ -19,7 +19,7 @@ from mat.eval.score_level import score_agreement
 from mat.synth.generate import build_clip
 from mat.synth.suites import mono_recipes
 from mat.transcribe.audio_io import load_audio
-from mat.transcribe.pyin import SR, transcribe_array
+from mat.transcribe.pyin import SR, Mono, transcribe_array
 
 
 @dataclass
@@ -77,7 +77,12 @@ def run_mono(
     report = MonoReport(renderer=renderer)
     for i, recipe in enumerate(mono_recipes(renderer, n, seed)):
         clip = build_clip(recipe)
-        est = transcribe_array(clip.audio, recipe.sample_rate, recipe.instrument, "0" * 64)
+        est = transcribe_array(
+            clip.audio,
+            recipe.sample_rate,
+            cast("Mono", recipe.instrument),
+            "0" * 64,
+        )
         s = note_scores(clip.truth, est)
         agreement = score_agreement(clip.symbolic, est.notes, est.beats)
         report.synthetic.append(
