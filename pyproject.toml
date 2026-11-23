@@ -12,7 +12,7 @@ dependencies = [
     "librosa>=0.11",
     "soundfile>=0.12",
     "pretty_midi>=0.2.10",
-    "mir_eval>=0.8",
+    "mir_eval>=0.8,<0.9",  # bss_eval_sources is deprecated and goes in 0.9; see eval/separation.py
     "pydantic>=2.7",
     "setuptools<81",  # pretty_midi imports pkg_resources
     "httpx>=0.28.1",

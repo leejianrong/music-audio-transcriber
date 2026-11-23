@@ -14,7 +14,8 @@ Decisions: `docs/adr/`. Decision register and licence research: `QUESTIONS.md`. 
 | V1 mono eval loop | built on branch `v1-mono-eval-loop`; real-clip eval waits on recorded clips |
 | V2 voice/bass to sheet | beats, fixtures, score-level metric built (branch `v2-sheet-music-contract`); the PDF run waits on sibei-score SIB2-131..133 |
 | V3 hosted worker | built on branch `v3-hosted-worker`; real run against local sibei-score works; no hosted deployment yet |
-| V4 and later | not started |
+| V7 separation | groundwork built (mix recipes, SDR/SI-SDR, baselines; `mat eval --suite separation`); no model yet |
+| V4-V6, V8-V10 | not started |
 
 ## Commands
 

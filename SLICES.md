@@ -217,6 +217,18 @@ synthetic-data eval loop predicts anything about real recordings.
 
 **Demo:** `mat separate mix.wav` writes vocals, drums, bass and other stems, and the report prints SDR beside the dev baselines.
 
+**Status (2026-11-23):** groundwork built: seeded 4-stem mix recipes with exact stems (`mat.synth.mix`), the `Separator` protocol, SDR (mir_eval BSS Eval) and SI-SDR, and three reference baselines. `mat eval --suite separation` prints them. Not yet done: htdemucs as a dev-only baseline, our own model, and any real-music evaluation.
+
+**Reference points (4 synthetic mixes, SDR dB, mono):**
+
+| Separator | tone renderer avg | soundfont avg |
+|---|---|---|
+| identity (mix as every stem), the floor | -7.8 | -6.7 |
+| harmonic/percussive plus band splits (classical) | 1.2 | 0.3 |
+| oracle ratio mask, the ceiling for mask-based models | 11.0 | 10.7 |
+
+The 7 dB bar in A18 is for real music, not these mixes. These numbers only show the harness separates good from bad separators and that a masking model cannot score much above 11 dB on this data even with the answer.
+
 **Rests on assumptions:** A18 (the 7 dB bar), and the open risk that clean real stems may not exist. The slice reveals this.
 
 ### Test plan
