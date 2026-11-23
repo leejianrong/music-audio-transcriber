@@ -1,0 +1,243 @@
+{
+  "$defs": {
+    "Beat": {
+      "additionalProperties": false,
+      "properties": {
+        "is_downbeat": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Is Downbeat"
+        },
+        "t_s": {
+          "minimum": 0,
+          "title": "T S",
+          "type": "number"
+        }
+      },
+      "required": [
+        "t_s"
+      ],
+      "title": "Beat",
+      "type": "object"
+    },
+    "Note": {
+      "additionalProperties": false,
+      "properties": {
+        "cents": {
+          "anyOf": [
+            {
+              "maximum": 50,
+              "minimum": -50,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cents"
+        },
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "drum_class": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Drum Class"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "offset_s": {
+          "title": "Offset S",
+          "type": "number"
+        },
+        "onset_s": {
+          "minimum": 0,
+          "title": "Onset S",
+          "type": "number"
+        },
+        "pitch": {
+          "maximum": 127,
+          "minimum": 0,
+          "title": "Pitch",
+          "type": "integer"
+        },
+        "velocity": {
+          "anyOf": [
+            {
+              "maximum": 127,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Velocity"
+        }
+      },
+      "required": [
+        "id",
+        "onset_s",
+        "offset_s",
+        "pitch",
+        "confidence"
+      ],
+      "title": "Note",
+      "type": "object"
+    },
+    "NoteWarning": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "t_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "T S"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "NoteWarning",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "properties": {
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "model_version": {
+          "title": "Model Version",
+          "type": "string"
+        },
+        "stage": {
+          "const": "transcribe",
+          "default": "transcribe",
+          "title": "Stage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model_id",
+        "model_version"
+      ],
+      "title": "Producer",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "duration_s": {
+          "minimum": 0,
+          "title": "Duration S",
+          "type": "number"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "sha256",
+        "duration_s"
+      ],
+      "title": "Source",
+      "type": "object"
+    }
+  },
+  "$id": "https://github.com/leejianrong/music-audio-transcriber/schemas/note-events-v1",
+  "additionalProperties": false,
+  "properties": {
+    "beats": {
+      "items": {
+        "$ref": "#/$defs/Beat"
+      },
+      "title": "Beats",
+      "type": "array"
+    },
+    "instrument": {
+      "enum": [
+        "voice",
+        "bass",
+        "piano",
+        "drums",
+        "guitar",
+        "other"
+      ],
+      "title": "Instrument",
+      "type": "string"
+    },
+    "notes": {
+      "items": {
+        "$ref": "#/$defs/Note"
+      },
+      "title": "Notes",
+      "type": "array"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "warnings": {
+      "items": {
+        "$ref": "#/$defs/NoteWarning"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "source",
+    "instrument",
+    "producer"
+  ],
+  "title": "NoteEvents v1",
+  "type": "object"
+}

@@ -11,7 +11,7 @@ Decisions: `docs/adr/`. Decision register and licence research: `QUESTIONS.md`. 
 | Slice | State |
 |---|---|
 | Scaffold, CI, hooks | built |
-| V1 mono eval loop | see `SLICES.md` and the board |
+| V1 mono eval loop | built on branch `v1-mono-eval-loop`; real-clip eval waits on recorded clips |
 | V2 voice/bass to sheet | blocked on sibei-score SIB2-E9 for the real importer |
 | V3 and later | not started |
 
@@ -21,7 +21,7 @@ Decisions: `docs/adr/`. Decision register and licence research: `QUESTIONS.md`. 
 make            # list targets
 make install    # uv sync --frozen
 make check      # pre-push gate: ruff, mypy --strict, unit tests (fast, no infra)
-make test-integration   # needs fluidsynth + soundfont: `uv run mat synth fetch-soundfont`
+make test-integration   # needs fluidsynth (or `make docker-fluidsynth`) + `uv run mat synth fetch-soundfont`
 make licenses   # fail on GPL/AGPL runtime deps
 make hooks      # install the pre-push hook
 ```

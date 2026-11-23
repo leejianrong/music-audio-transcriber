@@ -33,6 +33,8 @@ synthetic-data eval loop predicts anything about real recordings.
 
 **Rests on assumptions:** A18 (the bars), A19 (we record the real set). If the real set is skipped the headline number is missing.
 
+**Result so far (2026-11-22):** tone renderer note F1 0.980 over 24 clips; FluidSynth/MuseScore_General 0.892 (bass 0.989, voice-range patches 0.795). The voice shortfall is soft-attack patches (flute, choir): pitch is right (F1 about 0.9 to 1.0 at a 200 ms onset tolerance) but onsets are late or notes split. Real clips: not yet recorded, so the sim-to-real gap is unmeasured (needs-human card on the board).
+
 ### Test plan
 
 #### End-to-end

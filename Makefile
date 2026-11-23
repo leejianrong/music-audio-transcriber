@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install lint fmt typecheck test test-integration check licenses hooks
+.PHONY: docker-fluidsynth help install lint fmt typecheck test test-integration check licenses hooks
 
 help:  ## List targets
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-18s %s\n", $$1, $$2}'
@@ -31,3 +31,6 @@ licenses:  ## Fail if a runtime dependency is GPL/AGPL
 
 hooks:  ## Install the pre-push hook
 	ln -sf ../../scripts/git-hooks/pre-push .git/hooks/pre-push
+
+docker-fluidsynth:  ## Build the fluidsynth image used when no local fluidsynth is installed
+	docker build -t mat-fluidsynth docker/fluidsynth
