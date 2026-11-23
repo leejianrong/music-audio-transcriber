@@ -99,9 +99,13 @@ synthetic-data eval loop predicts anything about real recordings.
 2. `mat worker` speaks sibei-score's worker protocol and writes NoteEvents to object storage by presigned URL. Pull versus push is undecided (sibei-score SIB2-135 decides); build the worker as a transport-agnostic handler first.
 3. Usage report in audio-seconds per job for sibei-score metering.
 4. Free-tier cap and a paid flag come from sibei-score; worker enforces job duration limit it is given.
-5. Isolation: worker container with no egress, resource-capped.
+5. Isolation: ffmpeg gets file and pipe protocols only plus CPU, memory and time limits; the worker container is non-root, read-only, capability-free and resource-capped. It cannot be egress-free (it pulls from the API and the object store), so egress is restricted to those two hosts at the network layer when deployed.
 
 **Demo:** On the hosted app, sign in, drop a short video of someone playing bass, select Bass, and receive an editable lead sheet and a MIDI download.
+
+**Status (2026-11-22):** built. `mat worker` speaks the pull protocol and was run against a real local sibei-score server: claim, download, ingest, transcribe, complete, a draft in the library, 12.08 audio-seconds metered, and a PDF. `make e2e-sibei` repeats it (`SIBEI_SCORE_DIR` points at a sibei-score checkout). Not yet done: a hosted deployment (none exists), and S3 presigned transfer against a real bucket (covered here by a fake).
+
+**Cost:** about 5.3 CPU-seconds per audio-minute for voice and bass (pYIN plus beats, warm, one core).
 
 **Rests on assumptions:** A20 (the cap is sized after this slice's cost data).
 

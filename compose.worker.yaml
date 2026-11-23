@@ -1,0 +1,21 @@
+# The audio worker, locked down. Secrets come from the host environment (or an untracked .env):
+#   MAT_API_URL=https://... MAT_WORKER_TOKEN=sbsw_... docker compose -f compose.worker.yaml up --build
+# The worker pulls, so it must reach the API and the object store. Limit egress to those two hosts at
+# the network layer (firewall or network policy); compose cannot express an allowlist.
+services:
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+    environment:
+      MAT_API_URL: ${MAT_API_URL:?set MAT_API_URL}
+      MAT_WORKER_TOKEN: ${MAT_WORKER_TOKEN:?set MAT_WORKER_TOKEN}
+    read_only: true
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 3g
+    cpus: 2
+    pids_limit: 256
+    restart: unless-stopped

@@ -13,7 +13,8 @@ Decisions: `docs/adr/`. Decision register and licence research: `QUESTIONS.md`. 
 | Scaffold, CI, hooks | built |
 | V1 mono eval loop | built on branch `v1-mono-eval-loop`; real-clip eval waits on recorded clips |
 | V2 voice/bass to sheet | beats, fixtures, score-level metric built (branch `v2-sheet-music-contract`); the PDF run waits on sibei-score SIB2-131..133 |
-| V3 and later | not started |
+| V3 hosted worker | built on branch `v3-hosted-worker`; real run against local sibei-score works; no hosted deployment yet |
+| V4 and later | not started |
 
 ## Commands
 
@@ -23,6 +24,8 @@ make install    # uv sync --frozen
 make check      # pre-push gate: ruff, mypy --strict, unit tests (fast, no infra)
 make test-integration   # needs fluidsynth (or `make docker-fluidsynth`) + `uv run mat synth fetch-soundfont`
 make licenses   # fail on GPL/AGPL runtime deps
+make e2e-sibei  # audio -> worker -> sibei-score draft -> PDF; needs SIBEI_SCORE_DIR (a sibei-score checkout)
+mat worker      # pull jobs from sibei-score; env MAT_API_URL (or --api-url) and MAT_WORKER_TOKEN (never argv)
 make hooks      # install the pre-push hook
 ```
 
@@ -38,6 +41,7 @@ make hooks      # install the pre-push hook
   and soundfonts are never committed.
 - NoteEvents is the only interface to sibei-score (ADR-0002). This repo never emits notation. The reference
   quantizer in `src/mat/eval` exists only to score; it is not the product's quantizer.
+- Worker secrets: the `sbsw_` token and presigned URLs must never reach logs or argv (a test enforces it). Audio is download-once, kept only in a temp dir.
 - Do not publish datasets or weights. Do not put secrets or personal details in commits.
 
 ## Layout
